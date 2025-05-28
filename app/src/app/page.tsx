@@ -22,8 +22,8 @@ export default function Home() {
       {/* Header */}
       <header className="flex flex-col items-center mt-10 mb-4">
         <Image src="/wom.png" alt="Wise Old Man" width={120} height={120} className="rounded-full border-4 border-blue-900 shadow-lg bg-[#23232a]" />
-        <h1 className="mt-4 text-4xl sm:text-5xl font-extrabold text-blue-200 runescape-title text-center tracking-widest blue-glow">Wise Old Man's Vault Cleaner</h1>
-        <p className="mt-2 text-lg sm:text-xl text-brown-200 italic text-center max-w-xl">Bulk transfer your ERC-20 treasures on Base with the wisdom and flair of Gielinor's most legendary wizard. No fees, no nonsense—just pure vault cleaning magic.</p>
+        <h1 className="mt-4 text-4xl sm:text-5xl font-extrabold text-blue-200 runescape-title text-center tracking-widest blue-glow">Wise Old Man&apos;s Vault Cleaner</h1>
+        <p className="mt-2 text-lg sm:text-xl text-brown-200 italic text-center max-w-xl">Bulk transfer your ERC-20 treasures on Base with the wisdom and flair of Gielinor&apos;s most legendary wizard. No fees, no nonsense—just pure vault cleaning magic.</p>
       </header>
       {/* Hero Section */}
       <section className="flex flex-col items-center bg-[#23232a] bg-opacity-95 rounded-xl shadow-xl px-8 py-6 max-w-2xl border-2 border-blue-900 mb-8">
@@ -33,7 +33,7 @@ export default function Home() {
           {isConnected && address ? (
             <TokenList address={address} apiKey={alchemyApiKey} />
           ) : (
-            <div className="mt-8 text-center text-gray-300 font-semibold">Click "Enter the Vault" to connect your wallet and begin your adventure.</div>
+            <div className="mt-8 text-center text-gray-300 font-semibold">Click &quot;Enter the Vault&quot; to connect your wallet and begin your adventure.</div>
           )}
         </div>
       </section>

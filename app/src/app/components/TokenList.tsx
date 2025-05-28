@@ -3,6 +3,7 @@
 // TODO: Run `npm install alchemy-sdk` if you haven't already.
 import { useEffect, useState } from 'react';
 import { Alchemy, Network, type TokenBalancesResponse, type TokenBalance } from 'alchemy-sdk';
+import Image from 'next/image';
 
 export interface TokenListProps {
   address: string;
@@ -44,6 +45,7 @@ async function fetchTokenPrice(symbol: string, contractAddress: string | null): 
       }
     }
   } catch (e) {
+    console.error(e);
     // Ignore errors, fallback to null
   }
   return null;
@@ -109,6 +111,7 @@ export default function TokenList({ address, apiKey, onSelectionChange }: TokenL
         setTokens([ethToken, ...tokensWithMeta]);
         setSelected(new Set()); // Reset selection on new fetch
       } catch (err) {
+        console.error(err);
         setError('Failed to fetch tokens');
       } finally {
         setLoading(false);
@@ -201,9 +204,11 @@ export default function TokenList({ address, apiKey, onSelectionChange }: TokenL
                   </td>
                   <td className="p-2 text-center">
                     {token.logoURI ? (
-                      <img
+                      <Image
                         src={token.logoURI}
                         alt={token.symbol}
+                        width={28}
+                        height={28}
                         className="w-7 h-7 rounded-full border border-blue-900 bg-[#18181b] object-contain"
                       />
                     ) : (
