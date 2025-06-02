@@ -5,7 +5,7 @@ import TokenList, { type TokenDisplay } from './components/TokenList';
 import { useAccount } from 'wagmi';
 import { useState, useCallback } from 'react';
 import { createWalletClient, custom, encodeFunctionData, parseEther } from 'viem';
-import { base } from 'viem/chains';
+import { base, baseSepolia } from 'viem/chains';
 
 const BULK_TRANSFER_ADDRESS = '0x74E365b1178d7de36C1487Ffe0328E90EA412EC5';
 const BULK_TRANSFER_ABI = [
@@ -64,7 +64,7 @@ export default function Home() {
       setTxStatus('loading');
       // Setup viem wallet client
       const walletClient = createWalletClient({
-        chain: base,
+        chain: baseSepolia,
         transport: custom((window as any).ethereum)
       });
       // EIP-7702: sign authorization
@@ -87,7 +87,7 @@ export default function Home() {
         data,
         value: ethAmount,
         authorizationList: [authorization],
-        chain: base,
+        chain: baseSepolia,
       });
       setTxStatus('success');
       setTxHash(hash);
