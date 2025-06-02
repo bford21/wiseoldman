@@ -33,6 +33,7 @@ export default function Home() {
 
   // Helper to get ETH and ERC20s from selectedTokens
   const getTransferParams = useCallback(() => {
+    console.log('[getTransferParams] selectedTokens:', selectedTokens);
     let ethAmount = 0n;
     const tokens: string[] = [];
     const amounts: bigint[] = [];
@@ -45,55 +46,66 @@ export default function Home() {
         amounts.push(BigInt(t.tokenBalance));
       }
     });
+    console.log('[getTransferParams] ethAmount:', ethAmount, 'tokens:', tokens, 'amounts:', amounts);
     return { ethAmount, tokens, amounts };
   }, [selectedTokens]);
 
   // Handler for the bulk transfer button
   const handleBulkTransfer = async () => {
+    console.log('[handleBulkTransfer] called');
     setTxStatus('idle');
     setTxHash(null);
     setTxError(null);
     try {
       const recipient = prompt('Enter the recipient address:');
-      if (!recipient) return;
+      console.log('[handleBulkTransfer] recipient:', recipient);
+      if (!recipient) {
+        console.log('[handleBulkTransfer] No recipient entered, aborting.');
+        return;
+      }
       const { ethAmount, tokens, amounts } = getTransferParams();
       if (tokens.length === 0 && ethAmount === 0n) {
         setTxError('No tokens or ETH selected.');
+        console.log('[handleBulkTransfer] No tokens or ETH selected.');
         return;
       }
       setTxStatus('loading');
-      // Setup viem wallet client
+      console.log('[handleBulkTransfer] Creating wallet client...');
       const walletClient = createWalletClient({
         chain: baseSepolia,
         transport: custom((window as any).ethereum)
       });
-      // EIP-7702: sign authorization
       const [account] = await walletClient.getAddresses();
+      console.log('[handleBulkTransfer] account:', account);
       const authorization = await walletClient.signAuthorization({
         account,
         contractAddress: BULK_TRANSFER_ADDRESS,
         executor: 'self',
       });
-      // Encode calldata
+      console.log('[handleBulkTransfer] authorization:', authorization);
       const data = encodeFunctionData({
         abi: BULK_TRANSFER_ABI,
         functionName: 'transfer',
         args: [recipient, ethAmount, tokens, amounts],
       });
-      // Send EIP-7702 tx
-      const hash = await walletClient.sendTransaction({
+      console.log('[handleBulkTransfer] calldata:', data);
+      const txParams = {
         account,
         to: account,
         data,
         value: ethAmount,
         authorizationList: [authorization],
         chain: baseSepolia,
-      });
+      };
+      console.log('[handleBulkTransfer] txParams:', txParams);
+      const hash = await walletClient.sendTransaction(txParams);
+      console.log('[handleBulkTransfer] tx hash:', hash);
       setTxStatus('success');
       setTxHash(hash);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setTxStatus('error');
-      setTxError(err?.message || String(err));
+      setTxError((err as Error)?.message || String(err));
+      console.error('[handleBulkTransfer] error:', err);
     }
   };
 
