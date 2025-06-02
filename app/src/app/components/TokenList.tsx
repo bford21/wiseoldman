@@ -11,7 +11,7 @@ export interface TokenListProps {
   onSelectionChange?: (selected: TokenDisplay[]) => void;
 }
 
-interface TokenDisplay {
+export type TokenDisplay = {
   contractAddress: string | null; // null for native ETH
   tokenBalance: string; // hex string
   symbol: string;
@@ -19,7 +19,7 @@ interface TokenDisplay {
   decimals: number;
   price?: number; // USD price
   logoURI?: string;
-}
+};
 
 async function fetchTokenPrice(symbol: string, contractAddress: string | null): Promise<number | null> {
   // Try CoinGecko API for price data

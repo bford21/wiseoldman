@@ -1,12 +1,101 @@
 'use client';
 import Image from "next/image";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import TokenList from './components/TokenList';
+import TokenList, { type TokenDisplay } from './components/TokenList';
 import { useAccount } from 'wagmi';
+import { useState, useCallback } from 'react';
+import { createWalletClient, custom, encodeFunctionData, parseEther } from 'viem';
+import { base } from 'viem/chains';
+
+const BULK_TRANSFER_ADDRESS = '0x74E365b1178d7de36C1487Ffe0328E90EA412EC5';
+const BULK_TRANSFER_ABI = [
+  {
+    "inputs": [
+      { "internalType": "address", "name": "recipient", "type": "address" },
+      { "internalType": "uint256", "name": "ethAmount", "type": "uint256" },
+      { "internalType": "address[]", "name": "tokens", "type": "address[]" },
+      { "internalType": "uint256[]", "name": "amounts", "type": "uint256[]" }
+    ],
+    "name": "transfer",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  }
+];
 
 export default function Home() {
   const { address, isConnected } = useAccount();
   const alchemyApiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || '';
+  const [selectedTokens, setSelectedTokens] = useState<TokenDisplay[]>([]);
+  const [txStatus, setTxStatus] = useState<'idle'|'loading'|'success'|'error'>('idle');
+  const [txHash, setTxHash] = useState<string|null>(null);
+  const [txError, setTxError] = useState<string|null>(null);
+
+  // Helper to get ETH and ERC20s from selectedTokens
+  const getTransferParams = useCallback(() => {
+    let ethAmount = 0n;
+    const tokens: string[] = [];
+    const amounts: bigint[] = [];
+    selectedTokens.forEach(t => {
+      if (!t.contractAddress) {
+        // ETH
+        ethAmount = BigInt(t.tokenBalance);
+      } else {
+        tokens.push(t.contractAddress);
+        amounts.push(BigInt(t.tokenBalance));
+      }
+    });
+    return { ethAmount, tokens, amounts };
+  }, [selectedTokens]);
+
+  // Handler for the bulk transfer button
+  const handleBulkTransfer = async () => {
+    setTxStatus('idle');
+    setTxHash(null);
+    setTxError(null);
+    try {
+      const recipient = prompt('Enter the recipient address:');
+      if (!recipient) return;
+      const { ethAmount, tokens, amounts } = getTransferParams();
+      if (tokens.length === 0 && ethAmount === 0n) {
+        setTxError('No tokens or ETH selected.');
+        return;
+      }
+      setTxStatus('loading');
+      // Setup viem wallet client
+      const walletClient = createWalletClient({
+        chain: base,
+        transport: custom((window as any).ethereum)
+      });
+      // EIP-7702: sign authorization
+      const [account] = await walletClient.getAddresses();
+      const authorization = await walletClient.signAuthorization({
+        account,
+        contractAddress: BULK_TRANSFER_ADDRESS,
+        executor: 'self',
+      });
+      // Encode calldata
+      const data = encodeFunctionData({
+        abi: BULK_TRANSFER_ABI,
+        functionName: 'transfer',
+        args: [recipient, ethAmount, tokens, amounts],
+      });
+      // Send EIP-7702 tx
+      const hash = await walletClient.sendTransaction({
+        account,
+        to: account,
+        data,
+        value: ethAmount,
+        authorizationList: [authorization],
+        chain: base,
+      });
+      setTxStatus('success');
+      setTxHash(hash);
+    } catch (err: any) {
+      setTxStatus('error');
+      setTxError(err?.message || String(err));
+    }
+  };
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#18181b] font-serif relative">
@@ -31,7 +120,22 @@ export default function Home() {
         <p className="text-brown-100 mb-4 text-center">Connect your wallet to scan your vault, select your loot, and send it on its way. The Wise Old Man will handle the heavy lifting—no bank standing required.</p>
         <div className="w-full flex flex-col items-center">
           {isConnected && address ? (
-            <TokenList address={address} apiKey={alchemyApiKey} />
+            <>
+              <TokenList address={address} apiKey={alchemyApiKey} onSelectionChange={setSelectedTokens} />
+              <button
+                className="mt-6 px-6 py-2 rounded-lg bg-blue-700 text-white font-bold shadow-lg hover:bg-blue-800 transition disabled:opacity-50"
+                disabled={selectedTokens.length === 0 || txStatus === 'loading'}
+                onClick={handleBulkTransfer}
+              >
+                {txStatus === 'loading' ? 'Transferring...' : 'Bulk Transfer Selected Tokens'}
+              </button>
+              {txStatus === 'success' && txHash && (
+                <div className="mt-4 text-green-300 text-sm">Success! Tx Hash: <a href={`https://basescan.org/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="underline">{txHash}</a></div>
+              )}
+              {txStatus === 'error' && txError && (
+                <div className="mt-4 text-red-400 text-sm">Error: {txError}</div>
+              )}
+            </>
           ) : (
             <div className="mt-8 text-center text-gray-300 font-semibold">Click &quot;Enter the Vault&quot; to connect your wallet and begin your adventure.</div>
           )}
