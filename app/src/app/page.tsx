@@ -4,8 +4,8 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import TokenList, { type TokenDisplay } from './components/TokenList';
 import { useAccount } from 'wagmi';
 import { useState, useCallback } from 'react';
-import { createWalletClient, custom, encodeFunctionData, parseEther } from 'viem';
-import { base, baseSepolia } from 'viem/chains';
+import { createWalletClient, custom, encodeFunctionData } from 'viem';
+import { baseSepolia } from 'viem/chains';
 
 const BULK_TRANSFER_ADDRESS = '0x74E365b1178d7de36C1487Ffe0328E90EA412EC5';
 const BULK_TRANSFER_ABI = [
