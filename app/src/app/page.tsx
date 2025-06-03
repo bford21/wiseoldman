@@ -87,6 +87,17 @@ export default function Home() {
 
       setTxStatus('loading');
 
+      // Debug: Print token transfer info
+      for (let i = 0; i < tokens.length; i++) {
+        const tokenAddress = tokens[i];
+        const amount = amounts[i];
+        // Find the token info from selectedTokens
+        const tokenInfo = selectedTokens.find(t => t.contractAddress?.toLowerCase() === tokenAddress.toLowerCase());
+        const decimals = tokenInfo?.decimals ?? 18;
+        const tokenBalance = tokenInfo?.tokenBalance;
+        console.log(`[DEBUG] Token: ${tokenAddress}, Amount to transfer: ${amount.toString()}, Decimals: ${decimals}, tokenBalance (raw): ${tokenBalance}`);
+      }
+
       // 5. Encode function data
       const data = encodeFunctionData({
         abi: BULK_TRANSFER_ABI,
