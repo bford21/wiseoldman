@@ -52,63 +52,104 @@ export default function Home() {
 
   // Handler for the bulk transfer button
   const handleBulkTransfer = async () => {
-    console.log('[handleBulkTransfer] called');
     setTxStatus('idle');
     setTxHash(null);
     setTxError(null);
+
     try {
-      const recipient = prompt('Enter the recipient address:');
-      console.log('[handleBulkTransfer] recipient:', recipient);
-      if (!recipient) {
-        console.log('[handleBulkTransfer] No recipient entered, aborting.');
+      // 1. Ensure MetaMask is available
+      const provider = (window as any).ethereum;
+      if (!provider) {
+        setTxError('MetaMask not found. Please install MetaMask.');
         return;
       }
-      const { ethAmount, tokens, amounts } = getTransferParams();
-      if (tokens.length === 0 && ethAmount === 0n) {
-        setTxError('No tokens or ETH selected.');
-        console.log('[handleBulkTransfer] No tokens or ETH selected.');
-        return;
-      }
-      setTxStatus('loading');
-      console.log('[handleBulkTransfer] Creating wallet client...');
-      const walletClient = createWalletClient({
-        chain: baseSepolia,
-        transport: custom((window as any).ethereum)
-      });
-      const [account] = await walletClient.getAddresses();
+
+      // 2. Ensure user is connected
+      const accounts = await provider.request({ method: 'eth_requestAccounts' });
+      const account = accounts[0];
       if (!account) {
         setTxError('No account found. Please connect your wallet.');
         return;
       }
-      console.log('[handleBulkTransfer] account:', account);
-      const authorization = await walletClient.signAuthorization({
-        account,
-        contractAddress: BULK_TRANSFER_ADDRESS,
-        executor: 'self',
-      });
-      console.log('[handleBulkTransfer] authorization:', authorization);
+
+      // 3. Prompt for recipient
+      const recipient = prompt('Enter the recipient address:');
+      if (!recipient) {
+        setTxError('No recipient entered.');
+        return;
+      }
+
+      // 4. Prepare transfer params
+      const { ethAmount, tokens, amounts } = getTransferParams();
+      if (tokens.length === 0 && ethAmount === 0n) {
+        setTxError('No tokens or ETH selected.');
+        return;
+      }
+
+      setTxStatus('loading');
+
+      // 5. Encode function data
       const data = encodeFunctionData({
         abi: BULK_TRANSFER_ABI,
         functionName: 'transfer',
         args: [recipient, ethAmount, tokens, amounts],
       });
-      console.log('[handleBulkTransfer] calldata:', data);
-      const txParams = {
-        account,
-        to: account,
+
+      // 6. Request EIP-7702 authorization (if supported)
+      let authorizationList: any[] = [];
+      let supportsSignAuthorization = false;
+      try {
+        // Feature-detect EIP-7702 support
+        if (provider.request && typeof provider.request === 'function') {
+          // Try a dummy call to see if method is supported
+          await provider.request({
+            method: 'wallet_getMethodAvailability',
+            params: ['eth_signAuthorization'],
+          });
+          supportsSignAuthorization = true;
+        }
+      } catch {
+        // Method not available, fallback to standard tx
+        supportsSignAuthorization = false;
+      }
+
+      if (supportsSignAuthorization) {
+        // 7. Request authorization signature
+        const authorization = await provider.request({
+          method: 'eth_signAuthorization',
+          params: [{
+            contractAddress: BULK_TRANSFER_ADDRESS,
+            executor: 'self', // or another address if delegating
+            // Add more fields as needed for your use case
+          }],
+        });
+        authorizationList = [authorization];
+      }
+
+      // 8. Build transaction object
+      const txParams: any = {
+        from: account,
+        to: BULK_TRANSFER_ADDRESS,
         data,
-        value: ethAmount,
-        authorizationList: [authorization],
-        chain: baseSepolia,
+        value: ethAmount ? `0x${ethAmount.toString(16)}` : '0x0',
       };
-      console.log('[handleBulkTransfer] txParams:', txParams);
-      const hash = await walletClient.sendTransaction(txParams);
-      console.log('[handleBulkTransfer] tx hash:', hash);
+      if (authorizationList.length > 0) {
+        txParams.authorizationList = authorizationList;
+        // Optionally, set type: '0x04' if required by the network
+        // txParams.type = '0x04';
+      }
+
+      // 9. Send transaction
+      const txHash = await provider.request({
+        method: 'eth_sendTransaction',
+        params: [txParams],
+      });
+
       setTxStatus('success');
-      setTxHash(hash);
-    } catch (err: unknown) {
+      setTxHash(txHash);
+    } catch (err: any) {
       setTxStatus('error');
-      setTxError((err as Error)?.message || String(err));
+      setTxError(err?.message || String(err));
       console.error('[handleBulkTransfer] error:', err);
     }
   };
