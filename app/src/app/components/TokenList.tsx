@@ -63,7 +63,7 @@ export default function TokenList({ address, apiKey, onSelectionChange }: TokenL
     setError(null);
     const alchemy = new Alchemy({
       apiKey,
-      network: Network.BASE_MAINNET,
+      network: Network.BASE_SEPOLIA,
     });
     (async () => {
       try {
