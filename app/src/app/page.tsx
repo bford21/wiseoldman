@@ -76,6 +76,10 @@ export default function Home() {
         transport: custom((window as any).ethereum)
       });
       const [account] = await walletClient.getAddresses();
+      if (!account) {
+        setTxError('No account found. Please connect your wallet.');
+        return;
+      }
       console.log('[handleBulkTransfer] account:', account);
       const authorization = await walletClient.signAuthorization({
         account,
