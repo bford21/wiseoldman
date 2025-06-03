@@ -32,20 +32,20 @@ export default function Home() {
 
   // Helper to get ETH and ERC20s from selectedTokens
   const getTransferParams = useCallback(() => {
-    console.log('[getTransferParams] selectedTokens:', selectedTokens);
+    // For each selected token, use the raw on-chain value (BigInt) for transfer
     let ethAmount = 0n;
     const tokens: string[] = [];
     const amounts: bigint[] = [];
     selectedTokens.forEach(t => {
       if (!t.contractAddress) {
         // ETH
-        ethAmount = BigInt(t.tokenBalance);
+        ethAmount = BigInt(t.tokenBalance); // Already raw value
       } else {
         tokens.push(t.contractAddress);
+        // Use the raw token balance (already in smallest unit)
         amounts.push(BigInt(t.tokenBalance));
       }
     });
-    console.log('[getTransferParams] ethAmount:', ethAmount, 'tokens:', tokens, 'amounts:', amounts);
     return { ethAmount, tokens, amounts };
   }, [selectedTokens]);
 
